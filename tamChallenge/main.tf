@@ -91,18 +91,18 @@ module "eks" {
 
 ## Create S3 Bucket for MongoDB Dumps ##
 
-resource "aws_s3_bucket" "wiz-mongo-backups" {
-  bucket = "wiz-mongo-backups"
+resource "aws_s3_bucket" "cjudd-wiz-mongo-backups" {
+  bucket = "cjudd-wiz-mongo-backups"
   force_destroy = true
 }
 
 resource "aws_s3_bucket_public_access_block" "enable_public_access" {
-    bucket = aws_s3_bucket.wiz-mongo-backups.id
+    bucket = aws_s3_bucket.cjudd-wiz-mongo-backups.id
 }
 
 resource "aws_s3_bucket_policy" "allow_read_from_all" {
   depends_on = [ aws_s3_bucket_public_access_block.enable_public_access ]
-  bucket = aws_s3_bucket.wiz-mongo-backups.id
+  bucket = aws_s3_bucket.cjudd-wiz-mongo-backups.id
   policy = data.aws_iam_policy_document.allow_read_from_all.json
 }
 data "aws_iam_policy_document" "allow_read_from_all" {
@@ -116,14 +116,14 @@ data "aws_iam_policy_document" "allow_read_from_all" {
       "s3:ListBucket",
     ]
     resources = [
-      aws_s3_bucket.wiz-mongo-backups.arn,
-      "${aws_s3_bucket.wiz-mongo-backups.arn}/*",
+      aws_s3_bucket.cjudd-wiz-mongo-backups.arn,
+      "${aws_s3_bucket.cjudd-wiz-mongo-backups.arn}/*",
     ]
   }
 }
 
 resource "aws_s3_bucket_website_configuration" "static_website_configuration" {
-  bucket = aws_s3_bucket.wiz-mongo-backups.id
+  bucket = aws_s3_bucket.cjudd-wiz-mongo-backups.id
 
   index_document {
     suffix = "index.html"
@@ -131,20 +131,20 @@ resource "aws_s3_bucket_website_configuration" "static_website_configuration" {
 }
 
 resource "aws_s3_bucket_cors_configuration" "cors_rules" {
-  bucket = aws_s3_bucket.wiz-mongo-backups.id
+  bucket = aws_s3_bucket.cjudd-wiz-mongo-backups.id
 
   cors_rule {
     allowed_headers = ["*s"]
     allowed_methods = ["GET"]
-    allowed_origins = ["http://${aws_s3_bucket.wiz-mongo-backups.id}.s3-website-us-east-1.amazonaws.com"]
+    allowed_origins = ["http://${aws_s3_bucket.cjudd-wiz-mongo-backups.id}.s3-website-us-east-1.amazonaws.com"]
     expose_headers  = ["x-amz-server-side-encryption", "x-amz-request-id", "x-amz-id-2"]
     max_age_seconds = 3000
   }
 }
 
 resource "aws_s3_object" "index_file" {
-  depends_on = [ aws_s3_bucket.wiz-mongo-backups ]
-  bucket = "wiz-mongo-backups"
+  depends_on = [ aws_s3_bucket.cjudd-wiz-mongo-backups ]
+  bucket = "cjudd-wiz-mongo-backups"
   key = "index.html"
   source = "${path.module}/index.html"
   content_type = "text/html"
@@ -155,8 +155,9 @@ resource "aws_s3_object" "index_file" {
 ## Deploy EC2 Intance for MongoDB into EKS VPC (And Related Resources)##
 
 # Set data source to get ARN for the AdministratorAccess AWS managed policy (Used in MongoDB instance creation)
-data "aws_iam_policy" "FullAdminAcces" {
-  arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+data "aws_iam_policy" "FullAdminAccess" {
+#  arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+  name = "AdministratorAccess"
 }
 
 # Create IAM 'Assume' Role w/Full Admin access poilcy for attachment to MongoDB Instance
@@ -180,8 +181,15 @@ resource "aws_iam_role" "assume_admin_role" {
     Name = "mongodb-host"
   }
   # Attach the AWS Managed policy for Full Admin Access (AdministratorAccess) to the Role
-  managed_policy_arns = [data.aws_iam_policy.FullAdminAcces.arn]
+  # managed_policy_arns = [data.aws_iam_policy.FullAdminAccess.arn]
 }
+
+# Attach the AWS Managed policy for Full Admin Access (AdministratorAccess) to the Role
+resource "aws_iam_role_policy_attachment" "assume_admin_role" {
+  role       = aws_iam_role.assume_admin_role.name
+  policy_arn = data.aws_iam_policy.FullAdminAccess.arn
+}
+
 
 # Create the IAM Instance Profile for above Role / Policy combo - To be referenced in the MongoDB instance creation.
 resource "aws_iam_instance_profile" "mongodb-iam-instance-profile" {
@@ -290,7 +298,7 @@ resource "aws_instance" "mongodb" {
               echo '#!/bin/bash _
               MONGODUMP_BIN_PATH="/usr/bin/mongodump" _
               DUMP_PATH="/home/ubuntu/mongodb-backups" _
-              S3_BUCKET_URI="s3://${aws_s3_bucket.wiz-mongo-backups.id}/" _
+              S3_BUCKET_URI="s3://${aws_s3_bucket.cjudd-wiz-mongo-backups.id}/" _
                _
               ## Create backup _
               $MONGODUMP_BIN_PATH --host=$(hostname -s) --authenticationDatabase "admin" --username=administrator --password=password --out=$DUMP_PATH --gzip _

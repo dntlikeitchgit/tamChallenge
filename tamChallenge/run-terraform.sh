@@ -1,7 +1,9 @@
 #!/bin/bash
 
-APPLY_FIRST_PATH="/Users/judch01/terraform/wiz-eks-tasky"
-APPLY_SECOND_PATH="/Users/judch01/terraform/wiz-eks-tasky/tasky-deploy"
+#APPLY_FIRST_PATH="/Users/judch01/terraform/wiz-eks-tasky"
+#APPLY_SECOND_PATH="/Users/judch01/terraform/wiz-eks-tasky/tasky-deploy"
+APPLY_FIRST_PATH="./"
+APPLY_SECOND_PATH="./tasky-deploy"
 APPLY=false
 DESTROY=false
 FAIL=true
